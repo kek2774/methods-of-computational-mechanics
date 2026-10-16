@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 from progonka_matrix import clean_solve_progonka_matrix
+from scipy.integrate import quad
+from scipy.special import airy
 
 alpha: np.ndarray = np.array([1, 0.5])
 beta: np.ndarray = np.array([0, 1])
@@ -13,6 +15,27 @@ N: int = 10
 
 h: float = (b - a) / N
 nodes: np.ndarray = np.array([a + n * h for n in range(N + 1)])
+
+
+def y_exact(x):
+    def exact_at(xi):
+        Ai, _, Bi, _ = airy(xi + 1)
+
+        I1 = quad(lambda t: t**2 * np.exp(t) * airy(t + 1)[0], a, xi)[0]
+        I2 = quad(lambda t: t**2 * np.exp(t) * airy(t + 1)[2], a, xi)[0]
+
+        return np.exp(-xi) * (
+            -8.030205725881711 * Ai
+            + 0.675923144730242 * Bi
+            + np.pi * (Bi * I1 - Ai * I2)
+        )
+
+    x = np.asarray(x, dtype=float)
+
+    if x.ndim == 0:
+        return exact_at(float(x))
+
+    return np.vectorize(exact_at, otypes=[float])(x)
 
 
 def p(x: np.ndarray) -> np.ndarray:
@@ -85,7 +108,7 @@ result = clean_solve_progonka_matrix(A, b_vec)
 x_vec = result[0]  # type: ignore
 residuals_vec = result[1]  # type: ignore
 print(np.round(x_vec, 3))
-print(residuals_vec)
+print(np.abs(x_vec - y_exact(nodes)))
 
 
 # Красивый график
